@@ -1,0 +1,1041 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FFmpegForge (offline)</title>
+<style>
+  :root {
+    --bg: #f6f7f8; --card: #ffffff; --text: #1d2125; --muted: #5d6670;
+    --line: #dadfe4; --accent: #16a34a; --accent-dark: #15803d; --on-accent: #ffffff;
+    --code-bg: #14181c; --code-text: #e6efe9; --warn-bg: #fff6df; --warn-text: #7a5200;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #121416; --card: #1b1e21; --text: #e6e9ec; --muted: #9aa3ab;
+      --line: #2c3237; --accent: #4ade80; --accent-dark: #86efac; --on-accent: #0b0b0b;
+      --code-bg: #0b0d0f; --code-text: #e6efe9; --warn-bg: #3a2f12; --warn-text: #f1cf86;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 980px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { margin: 0 0 4px; font-size: 28px; }
+  .sub { color: var(--muted); margin: 0 0 16px; }
+  .badge { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 999px;
+           background: var(--accent); color: var(--on-accent); vertical-align: middle; margin-left: 8px; }
+  .out { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 8px 0 12px; }
+  pre#out { margin: 0; padding: 14px 16px; background: var(--code-bg); color: var(--code-text);
+            border-radius: 8px; overflow: auto; max-height: 34vh; white-space: pre-wrap; word-break: break-all;
+            font: 14px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; min-height: 52px; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 8px; align-items: center; }
+  button { font: inherit; padding: 7px 14px; border-radius: 6px; border: 1px solid var(--accent);
+           background: var(--accent); color: var(--on-accent); cursor: pointer; }
+  button:hover { background: var(--accent-dark); }
+  button.secondary { background: transparent; color: var(--accent-dark); }
+  button.secondary:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+  .bar label, .top label { color: var(--muted); font-size: 13px; display: flex; align-items: center; gap: 6px; }
+  .warn { background: var(--warn-bg); color: var(--warn-text); border-radius: 6px;
+          padding: 8px 12px; margin-top: 8px; font-size: 13px; }
+  .warn ul { margin: 0; padding-left: 18px; }
+  details { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px 16px; margin: 4px 0 12px; }
+  summary { cursor: pointer; font-weight: 600; color: var(--accent-dark); }
+  table#exp { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
+  table#exp td { padding: 5px 8px 5px 0; vertical-align: top; border-top: 1px solid var(--line); }
+  table#exp td:first-child { width: 46%; }
+  code { font: 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; word-break: break-all; }
+  .top { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 4px 0 0; }
+  fieldset { background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+             margin: 16px 0; padding: 4px 16px 8px; }
+  fieldset[hidden] { display: none; }
+  legend { font-weight: 600; padding: 0 8px; color: var(--accent-dark); }
+  .row { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 6px 16px; padding: 10px 0;
+         border-bottom: 1px solid var(--line); align-items: start; }
+  .row[hidden] { display: none; }
+  .row:last-child { border-bottom: 0; }
+  .row > .lbl { font-weight: 600; padding-top: 6px; }
+  .help { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  input[type=text], select, textarea { width: 100%; max-width: 620px; font: inherit; padding: 6px 8px;
+      border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text); }
+  textarea { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; resize: vertical; }
+  input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible
+      { outline: 2px solid var(--accent); outline-offset: 1px; }
+  input[type=checkbox] { width: 18px; height: 18px; margin-top: 7px; }
+  select { width: auto; max-width: 100%; }
+  footer { color: var(--muted); font-size: 13px; margin-top: 24px; }
+  @media (max-width: 640px) { .row { grid-template-columns: minmax(0, 1fr); } .row > .lbl { padding-top: 0; }
+                              table#exp td:first-child { width: auto; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>FFmpegForge <span class="badge">offline</span></h1>
+  <p class="sub">Pick a task and get a ready-to-run <code>ffmpeg</code> command, with a plain-English explanation of every part. Nothing is sent anywhere: this page makes no network requests.</p>
+
+  <div class="out">
+    <pre id="out" aria-live="polite"></pre>
+    <div class="bar">
+      <button id="copy" type="button">Copy command</button>
+      <button id="save" type="button" class="secondary">Save as script</button>
+      <label>Shell
+        <select id="shell">
+          <option value="posix">bash / zsh / sh</option>
+          <option value="ps">PowerShell</option>
+          <option value="cmd">Windows cmd</option>
+        </select>
+      </label>
+      <select id="syntax" hidden><option value="long">long</option></select>
+      <label><input type="checkbox" id="multiline" style="margin:0"> Multi-line</label>
+    </div>
+    <div id="warns" class="warn" hidden></div>
+  </div>
+
+  <details id="explain" open>
+    <summary>What each part does</summary>
+    <table id="exp"></table>
+  </details>
+
+  <div class="top">
+    <label>Quick start
+      <select id="preset"><option value="">Choose a recipe...</option></select>
+    </label>
+    <button id="reset" type="button" class="secondary">Reset all</button>
+  </div>
+
+  <div id="form"></div>
+
+  <footer>This builds a suggested command; it doesn't run anything. Use it as a starting point and edit before running. FFmpeg has hundreds of options, so only the common ones are here; use the &ldquo;Extra options&rdquo; box for the rest, and see <code>ffmpeg -h</code> or the FFmpeg documentation. Hardware encoders (NVIDIA, Mac) need matching hardware and a build of FFmpeg that supports them.</footer>
+</main>
+
+<script>
+"use strict";
+
+// ---- field constructors --------------------------------------------------
+function F(id, label, o) { var f = { id: id, label: label }; if (o) for (var k in o) f[k] = o[k]; return f; }
+function T(id, label, o) { return F(id, label, o); }
+function A(id, label, o) { o = o || {}; o.type = "area"; return F(id, label, o); }
+function C(id, label, o) { o = o || {}; o.type = "check"; return F(id, label, o); }
+function S(id, label, opts, o) { o = o || {}; o.type = "select"; o.opts = opts; return F(id, label, o); }
+function sec(title, show, fields) { return { title: title, show: show, fields: fields }; }
+function at() { return { on: "cmd", is: [].slice.call(arguments) }; }
+function when(id) { return { on: id, is: [].slice.call(arguments, 1) }; }
+function range(vals, label) { return vals.map(function (v) { return [String(v), label ? label(v) : String(v)]; }); }
+
+// ---- visibility / defaults ----------------------------------------------
+function cond(c, s) {
+  if (!c) return true;
+  if (Array.isArray(c)) return c.every(function (x) { return cond(x, s); });
+  var v = s[c.on];
+  if (c.is) return c.is.indexOf(v) > -1;
+  if (c.not) return c.not.indexOf(v) === -1;
+  return true;
+}
+function visible(f, s) { return cond(f.sec && f.sec.show, s) && cond(f.show, s); }
+function allFields() {
+  var out = [];
+  SECTIONS.forEach(function (sc) { sc.fields.forEach(function (f) { f.sec = sc; out.push(f); }); });
+  return out;
+}
+function defOf(f) {
+  if (f.def !== undefined) return f.def;
+  if (f.type === "check") return false;
+  if (f.type === "select") return f.opts[0][0];
+  return "";
+}
+function defaults() {
+  var s = { syntax: "short", shell: "posix" };
+  allFields().forEach(function (f) { s[f.id] = defOf(f); });
+  return s;
+}
+
+// ---- quoting -------------------------------------------------------------
+function safeRe(shell) {
+  return shell === "posix" ? /^[A-Za-z0-9_@%+=:,.\/-]+$/ : /^[A-Za-z0-9_@%+=:,.\/\\-]+$/;
+}
+function quoteWhole(s, shell) {
+  if (s === "") return shell === "cmd" ? '""' : "''";
+  if (safeRe(shell).test(s)) return s;
+  if (/^[A-Za-z0-9_@%+=:,.\/\\-][A-Za-z0-9_@%+=:,.\/\\~-]*$/.test(s) && (shell !== "posix" || s.indexOf("\\") < 0)) return s; // ~ is only special at the start of a word
+  if (shell === "cmd") return '"' + s.replace(/"/g, '\\"') + '"';
+  return "'" + s.replace(/'/g, shell === "posix" ? "'\\''" : "''") + "'";
+}
+function quote(s, shell) {
+  if (/^-[A-Za-z#]+$/.test(s)) return s;
+  var m = /^(--?[A-Za-z][A-Za-z0-9-]*=)([\s\S]+)$/.exec(s);
+  if (m) return m[1] + quoteWhole(m[2], shell);
+  if (shell !== "cmd" && /^~(\/|$)/.test(s)) { // keep a leading ~ so the shell can expand it
+    var rest = s.slice(2);
+    return rest === "" ? s : "~/" + quoteWhole(rest, shell);
+  }
+  return quoteWhole(s, shell);
+}
+function lines(str) {
+  return (str || "").split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean);
+}
+// Split a typed command like:  bash -c 'echo hi'  into separate arguments.
+function splitArgs(str) {
+  var out = [], cur = "", q = "", has = false, i, c, n;
+  str = str || "";
+  for (i = 0; i < str.length; i++) {
+    c = str.charAt(i);
+    if (q) {
+      n = str.charAt(i + 1);
+      if (c === q) q = "";
+      else if (q === '"' && c === "\\" && (n === '"' || n === "\\")) { cur += n; i++; }
+      else cur += c;
+    } else if (c === "'" || c === '"') { q = c; has = true; }
+    else if (/\s/.test(c)) { if (cur !== "" || has) { out.push(cur); cur = ""; has = false; } }
+    else cur += c;
+  }
+  if (cur !== "" || has) out.push(cur);
+  return out;
+}
+
+// ---- command builder helper ---------------------------------------------
+// Each group is {t:[tokens], d:"description", h:true if it stays on the first line, m:true if mergeable like -a -v -> -av}
+function Builder(s) {
+  var L = s.syntax === "long", self = { g: [], w: [], L: L };
+  self.add = function (d, t, o) {
+    var x = { t: t, d: d };
+    if (o) for (var k in o) x[k] = o[k];
+    self.g.push(x);
+    return x;
+  };
+  self.head = function (d, t) { return self.add(d, t, { h: true }); };
+  self.flag = function (sh, lg, d) {
+    var t = L ? (lg || sh) : sh, x = self.add(d, [t]);
+    if (!L && /^-[A-Za-z]$/.test(t)) x.m = true;
+    return x;
+  };
+  self.val = function (sh, lg, v, d) { return self.add(d, [L ? (lg || sh) : sh, v]); };
+  self.opt = function (name, d) { return self.add(d, ["--" + name]); };
+  self.eq = function (name, v, d) { return self.add(d, ["--" + name + "=" + v]); };
+  self.kv = function (name, v, d) { return self.add(d, ["--" + name, v]); };
+  self.warn = function (m) { self.w.push(m); };
+  return self;
+}
+
+// ---- formatting ----------------------------------------------------------
+function tokensText(g, shell) { return g.t.map(function (t) { return quote(t, shell); }).join(" "); }
+
+function flatten(groups, shell, merge) {
+  var out = [], ci = -1, letters = "";
+  groups.forEach(function (g) {
+    if (merge && g.m && g.t.length === 1) {
+      if (ci < 0) { ci = out.length; out.push({ s: "", h: false }); }
+      letters += g.t[0].charAt(1);
+    } else out.push({ s: tokensText(g, shell), h: !!g.h });
+  });
+  if (ci >= 0) out[ci].s = "-" + letters;
+  return out;
+}
+
+function formatCommand(groups, shell, multiline, merge) {
+  var parts = flatten(groups, shell, merge), head = [APP.cmd], i = 0;
+  while (i < parts.length && parts[i].h) head.push(parts[i++].s);
+  var rest = parts.slice(i).map(function (p) { return p.s; });
+  if (!multiline) return head.concat(rest).join(" ");
+  var cont = shell === "posix" ? " \\" : (shell === "ps" ? " `" : " ^");
+  return [head.join(" ")].concat(rest).join(cont + "\n  ");
+}
+
+function shellWarnings(groups, shell, s) {
+  var toks = [], out = [];
+  groups.forEach(function (g) { g.t.forEach(function (t) { toks.push(t); }); });
+  if (shell === "ps" && toks.some(function (t) { return t.indexOf('"') > -1; }))
+    out.push("Windows PowerShell 5.1 can strip double quotes from arguments passed to other programs (PowerShell 7.3+ is fine). If a value contains double quotes, use PowerShell 7 or avoid them.");
+  if (shell === "cmd") {
+    if (toks.some(function (t) { return /[\r\n]/.test(t); })) out.push("cmd can't pass line breaks inside an argument. Keep each value on one line.");
+    if (toks.some(function (t) { return t.indexOf("%") > -1; })) out.push("Inside a .bat file, each % must be doubled (%%). At the interactive prompt, leave it as is.");
+  }
+  if (APP.shellWarn) out = out.concat(APP.shellWarn(toks, shell, s) || []);
+  return out;
+}
+
+
+var APP = { cmd: "ffmpeg", file: "ffmpeg-command", run: "Run FFmpeg" };
+
+var CMDS = [
+  ["convert", "Convert a video: change format, codec or quality"],
+  ["compress", "Make a video smaller"],
+  ["trim", "Cut a clip out of a video or audio file"],
+  ["audio", "Extract or convert audio"],
+  ["gif", "Make an animated GIF"],
+  ["frames", "Save pictures from a video (thumbnails, contact sheet)"],
+  ["slideshow", "Turn pictures into a video"],
+  ["edit", "Resize, crop, rotate, change speed or volume"],
+  ["overlay", "Add a logo or watermark"],
+  ["mix", "Combine video, audio and subtitles"],
+  ["concat", "Join clips one after another"]
+];
+
+var VCODECS = [
+  ["libx264", "H.264 (libx264): plays almost everywhere"],
+  ["libx265", "H.265 / HEVC (libx265): smaller files, fewer old devices"],
+  ["libsvtav1", "AV1 (libsvtav1): smallest, slower, newest"],
+  ["libvpx-vp9", "VP9 (libvpx-vp9): good for WebM and the web"],
+  ["h264_nvenc", "H.264 on an NVIDIA graphics card"],
+  ["hevc_nvenc", "H.265 on an NVIDIA graphics card"],
+  ["h264_videotoolbox", "H.264 on a Mac (hardware)"],
+  ["hevc_videotoolbox", "H.265 on a Mac (hardware)"],
+  ["copy", "Copy the video unchanged (no re-encoding, very fast)"],
+  ["none", "No video (drop it)"]
+];
+var SOFTCODECS = [["libx264", "H.264: plays almost everywhere"], ["libx265", "H.265 / HEVC: smaller, fewer old devices"], ["libsvtav1", "AV1: smallest, slower"]];
+var QUALITY = [["1", "High quality (bigger file)"], ["2", "Good quality (balanced)"], ["3", "Smaller file"], ["4", "Smallest file (visible quality loss)"]];
+var VSPEED = [["veryfast", "Fastest, bigger file"], ["fast", "Fast"], ["medium", "Balanced (default)"], ["slow", "Slow, smaller file"], ["veryslow", "Slowest, smallest file"]];
+var SCALES = [["", "Keep the original size"], ["2160", "4K (2160 high)"], ["1440", "1440 high"], ["1080", "1080 high (Full HD)"], ["720", "720 high (HD)"], ["480", "480 high"], ["360", "360 high"], ["240", "240 high"]];
+var FPSES = [["", "Keep the original"], ["60", "60 frames per second"], ["30", "30"], ["25", "25"], ["24", "24"], ["15", "15"], ["10", "10"]];
+var ACODECS = [
+  ["aac", "AAC: works everywhere (best for MP4)"],
+  ["libopus", "Opus: great quality for its size (WebM, MKV, OGG)"],
+  ["libmp3lame", "MP3"],
+  ["libvorbis", "Vorbis (OGG, WebM)"],
+  ["ac3", "Dolby AC-3"],
+  ["flac", "FLAC (lossless)"],
+  ["pcm_s16le", "WAV (uncompressed)"],
+  ["copy", "Copy the audio unchanged"],
+  ["none", "No audio (mute)"]
+];
+var ABR = [["", "Default for the codec"], ["64k", "64 kbps (voice)"], ["96k", "96 kbps"], ["128k", "128 kbps"], ["160k", "160 kbps"], ["192k", "192 kbps"], ["256k", "256 kbps"], ["320k", "320 kbps (highest)"]];
+var ACH = [["", "Keep as is"], ["1", "Mono"], ["2", "Stereo"]];
+var ASR = [["", "Keep as is"], ["44100", "44.1 kHz (CD)"], ["48000", "48 kHz (video)"], ["22050", "22.05 kHz (small voice files)"]];
+var SIZES = [["", "Keep each one's own size"], ["1920:1080", "1920 x 1080 (landscape, fits with bars)"], ["1280:720", "1280 x 720"], ["1080:1920", "1080 x 1920 (vertical)"], ["1080:1080", "1080 x 1080 (square)"]];
+
+var SECTIONS = [
+  sec("What do you want to do?", null, [
+    S("cmd", "Task", CMDS, { help: "Pick a task and its options appear below. FFmpeg is one tool that does all of these." })
+  ]),
+
+  sec("Input", at("convert", "compress", "trim", "audio", "gif", "frames", "edit", "overlay"), [
+    T("fIn", "Input file", { ph: "input.mp4", help: "The file you start with. If its name has spaces, just type it as is; the page adds the quotes." })
+  ]),
+
+  // ---- convert -------------------------------------------------------------
+  sec("Video", at("convert"), [
+    S("cvV", "Video format (codec)", VCODECS, { help: "H.264 is the safe choice. 'Copy' just repackages the file, for example MKV to MP4, with no quality loss." }),
+    S("cvQ", "Quality", QUALITY, { def: "2", show: { on: "cvV", not: ["copy", "none"] } }),
+    S("cvSpeed", "Encoding speed", VSPEED, { def: "medium", show: when("cvV", "libx264", "libx265", "libsvtav1", "libvpx-vp9"), help: "Slower settings squeeze the same quality into a smaller file." }),
+    S("cvScale", "Size", SCALES, { show: { on: "cvV", not: ["copy", "none"] } }),
+    T("cvScaleCustom", "Or your own size", { ph: "1280x720  or  640  or  -2:480", show: { on: "cvV", not: ["copy", "none"] }, help: "Overrides the menu above. A single number is the width; the height follows automatically." }),
+    S("cvFps", "Frame rate", FPSES, { show: { on: "cvV", not: ["copy", "none"] } }),
+    C("cvPix", "Use the most compatible colour format (yuv420p)", { def: true, show: { on: "cvV", not: ["copy", "none"] }, help: "Without this, some players show a black screen or odd colours." }),
+    C("cvHvc1", "Tag HEVC so Apple players accept it", { def: true, show: when("cvV", "libx265", "hevc_nvenc", "hevc_videotoolbox") }),
+    C("cvFast", "Start playing before the whole file has loaded (faststart)", { def: true, help: "Only applies to .mp4, .m4v and .mov outputs. Good for websites." }),
+    C("cvAll", "Keep every audio track and subtitle (-map 0)", { help: "By default FFmpeg keeps just one video, one audio and one subtitle stream." })
+  ]),
+  sec("Audio", at("convert"), [
+    S("cvA", "Audio format", ACODECS),
+    S("cvAbr", "Bitrate", ABR, { show: { on: "cvA", not: ["copy", "none", "flac", "pcm_s16le"] }, help: "Higher means better sound and a bigger file. 128k to 192k is fine for most things." }),
+    S("cvAch", "Channels", ACH, { show: { on: "cvA", not: ["copy", "none"] } }),
+    S("cvAsr", "Sample rate", ASR, { show: { on: "cvA", not: ["copy", "none"] } })
+  ]),
+
+  // ---- compress ------------------------------------------------------------
+  sec("Make it smaller", at("compress"), [
+    S("cpCodec", "Video format", SOFTCODECS),
+    S("cpQ", "How much smaller", [["1", "A little smaller (high quality)"], ["2", "Balanced"], ["3", "Much smaller"], ["4", "Tiny (visible quality loss)"]], { def: "2" }),
+    S("cpSpeed", "Encoding speed", VSPEED, { def: "medium" }),
+    S("cpScale", "Shrink the picture to", SCALES, { help: "Going from 1080 to 720 high saves a lot of space on its own." }),
+    S("cpA", "Audio", [["aac128", "AAC 128 kbps (default)"], ["aac96", "AAC 96 kbps"], ["aac64", "AAC 64 kbps (voice)"], ["copy", "Copy the audio unchanged"], ["none", "Remove the audio"]]),
+    T("cpMB", "Or aim for a file size (MB)", { ph: "25", help: "Optional. Needs the video length below. Replaces the quality setting above." }),
+    T("cpDur", "Video length", { ph: "00:02:30  or  150", help: "In seconds or hours:minutes:seconds. Only used for the target size." })
+  ]),
+
+  // ---- trim ----------------------------------------------------------------
+  sec("Cut a clip", at("trim"), [
+    T("trStart", "Start at", { ph: "00:01:30  or  90", help: "Hours:minutes:seconds or just seconds. Leave empty to start from the beginning." }),
+    T("trEnd", "End at", { ph: "00:02:10  or  130" }),
+    T("trLen", "Or length", { ph: "40", help: "How many seconds to keep. If you fill this in, it wins over 'End at'." }),
+    S("trMode", "How to cut", [["copy", "Fast: copy without re-encoding"], ["exact", "Exact: re-encode (slower, frame-accurate)"]], { help: "Fast cuts can start a moment early because they must begin at a keyframe." })
+  ]),
+
+  // ---- audio ---------------------------------------------------------------
+  sec("Audio", at("audio"), [
+    S("auFmt", "Save as", [["mp3", "MP3 (plays anywhere)"], ["m4a", "M4A / AAC"], ["opus", "Opus (small, great quality)"], ["ogg", "OGG Vorbis"], ["flac", "FLAC (lossless)"], ["wav", "WAV (uncompressed)"], ["copy", "Copy the original audio (no re-encoding)"]]),
+    S("auBr", "Bitrate", ABR, { def: "192k", show: when("auFmt", "mp3", "m4a", "opus", "ogg") }),
+    S("auCh", "Channels", ACH, { show: { on: "auFmt", not: ["copy"] } }),
+    S("auSr", "Sample rate", ASR, { show: { on: "auFmt", not: ["copy"] } }),
+    T("auTrack", "Audio track number", { ph: "2", help: "Only needed if the file has several audio tracks. Leave empty for the first." }),
+    T("auStart", "Start at", { ph: "00:00:30  or  30" }),
+    T("auLen", "Length", { ph: "60", help: "Seconds to keep." }),
+    C("auNorm", "Even out the loudness (loudnorm)", { show: { on: "auFmt", not: ["copy"] }, help: "Makes quiet and loud parts more consistent. Good for podcasts and speech." }),
+    T("auGain", "Change the volume (dB)", { ph: "6  or  -3", show: { on: "auFmt", not: ["copy"] }, help: "Positive is louder, negative is quieter." })
+  ]),
+
+  // ---- gif -----------------------------------------------------------------
+  sec("Make a GIF", at("gif"), [
+    T("gfStart", "Start at", { ph: "00:00:05  or  5" }),
+    T("gfLen", "Length (seconds)", { ph: "4", help: "Keep it short. A GIF is far bigger than the same video." }),
+    S("gfWidth", "Width", [["480", "480 px"], ["320", "320 px (small)"], ["640", "640 px"], ["800", "800 px"], ["1080", "1080 px"], ["", "Keep the original"]]),
+    S("gfFps", "Frames per second", [["12", "12 (good balance)"], ["8", "8 (smallest)"], ["10", "10"], ["15", "15"], ["20", "20"], ["24", "24 (smoothest)"]]),
+    S("gfQ", "Colour quality", [["pal", "Best: build a custom palette"], ["fast", "Quick: simple conversion"]], { help: "The custom palette looks far better and is usually smaller." }),
+    S("gfColors", "Number of colours", [["256", "256 (most)"], ["128", "128"], ["64", "64"], ["32", "32 (smallest)"]], { show: when("gfQ", "pal") }),
+    S("gfDither", "Dithering", [["bayer", "Bayer (smaller file)"], ["sierra2_4a", "Sierra (smoother gradients)"], ["none", "None"]], { show: when("gfQ", "pal") }),
+    S("gfLoop", "Repeat", [["0", "Forever"], ["-1", "Play once"], ["2", "Repeat 2 times"], ["4", "Repeat 4 times"]])
+  ]),
+
+  // ---- frames --------------------------------------------------------------
+  sec("Save pictures from a video", at("frames"), [
+    S("frMode", "What to save", [["one", "One picture at a chosen time"], ["every", "A picture every few seconds"], ["all", "Every single frame"], ["sheet", "One contact sheet (grid of thumbnails)"]]),
+    T("frTime", "At this time", { ph: "00:01:05  or  65", show: when("frMode", "one") }),
+    T("frEvery", "Every (seconds)", { def: "10", ph: "10", show: when("frMode", "every", "sheet") }),
+    S("frCols", "Columns", [["3", "3"], ["4", "4"], ["5", "5"], ["6", "6"], ["8", "8"]], { def: "5", show: when("frMode", "sheet") }),
+    S("frRows", "Rows", [["2", "2"], ["3", "3"], ["4", "4"], ["5", "5"], ["6", "6"]], { def: "4", show: when("frMode", "sheet") }),
+    S("frFmt", "Picture format", [["png", "PNG (sharp, bigger)"], ["jpg", "JPG (smaller)"], ["webp", "WebP"]]),
+    S("frQ", "JPG quality", [["2", "Best"], ["5", "Good"], ["10", "Smaller"], ["20", "Smallest"]], { def: "5", show: when("frFmt", "jpg") }),
+    S("frWidth", "Width of each picture", [["", "Keep the original"], ["320", "320 px"], ["640", "640 px"], ["1280", "1280 px"], ["1920", "1920 px"]])
+  ]),
+
+  // ---- slideshow -----------------------------------------------------------
+  sec("Pictures to video", at("slideshow"), [
+    T("ssPat", "Pictures", { ph: "photo%03d.jpg", help: "Numbered files such as photo001.jpg, photo002.jpg... become photo%03d.jpg (the %03d is where the number goes)." }),
+    T("ssStart", "First number", { ph: "1", help: "Only if the first file isn't number 0 or 1." }),
+    C("ssGlob", "Use every file matching a wildcard instead", { help: "For example *.jpg. Works on Mac and Linux, not in most Windows builds." }),
+    S("ssSecs", "Seconds per picture", [["3", "3 seconds"], ["0.5", "0.5 seconds"], ["1", "1 second"], ["2", "2 seconds"], ["5", "5 seconds"], ["10", "10 seconds"]]),
+    S("ssSize", "Video size", [["1920:1080", "1920 x 1080 (landscape)"], ["1280:720", "1280 x 720"], ["1080:1920", "1080 x 1920 (vertical)"], ["1080:1080", "1080 x 1080 (square)"], ["", "Keep the pictures' size (they must all match)"]], { help: "Pictures are shrunk to fit, with bars filling the rest." }),
+    S("ssBg", "Bar colour", [["black", "Black"], ["white", "White"]], { show: { on: "ssSize", not: [""] } }),
+    S("ssFps", "Video frame rate", [["30", "30"], ["25", "25"], ["24", "24"], ["60", "60"]]),
+    T("ssAudio", "Add music (optional)", { ph: "music.mp3", help: "The video ends when the pictures or the music end, whichever is first." })
+  ]),
+
+  // ---- edit ----------------------------------------------------------------
+  sec("Change the picture", at("edit"), [
+    S("edScale", "Resize", SCALES),
+    T("edScaleCustom", "Or your own size", { ph: "1280x720  or  640", help: "Overrides the menu above." }),
+    S("edCrop", "Crop", [["", "No crop"], ["sq", "Square from the middle"], ["169", "16:9 widescreen from the middle"], ["916", "9:16 vertical from the middle"], ["45", "4:5 portrait from the middle"], ["custom", "My own crop"]]),
+    T("edCropCustom", "Your crop", { ph: "1280:720:0:100", show: when("edCrop", "custom"), help: "Four numbers: width:height:left:top (in pixels)." }),
+    S("edRot", "Rotate or flip", [["", "No change"], ["cw", "Turn 90 degrees clockwise"], ["ccw", "Turn 90 degrees anticlockwise"], ["180", "Turn upside down (180)"], ["h", "Mirror left to right"], ["v", "Flip top to bottom"]]),
+    S("edSpeed", "Speed", [["", "Normal"], ["0.25", "Quarter speed"], ["0.5", "Half speed (slow motion)"], ["0.75", "0.75x"], ["1.25", "1.25x"], ["1.5", "1.5x"], ["2", "Double speed"], ["3", "3x"], ["4", "4x"], ["8", "8x"]]),
+    C("edGray", "Black and white"),
+    C("edDenoise", "Reduce grain and noise"),
+    T("edSubs", "Burn in subtitles from a file", { ph: "subs.srt", help: "Draws the subtitles into the picture so they always show." })
+  ]),
+  sec("Sound and quality", at("edit"), [
+    S("edVol", "Sound", [["", "Leave as is"], ["mute", "Remove the sound"], ["3", "Louder (+3 dB)"], ["6", "Much louder (+6 dB)"], ["-3", "Quieter (-3 dB)"], ["-6", "Much quieter (-6 dB)"], ["norm", "Even out the loudness"]]),
+    S("edQ", "Picture quality", [["1", "High quality (bigger file)"], ["2", "Good quality (balanced)"], ["3", "Smaller file"]], { def: "2", help: "Changing the picture means re-encoding with H.264." })
+  ]),
+
+  // ---- overlay -------------------------------------------------------------
+  sec("Logo or watermark", at("overlay"), [
+    T("ovLogo", "Logo or picture", { ph: "logo.png", help: "A PNG with a transparent background looks best." }),
+    S("ovPos", "Where", [["br", "Bottom right"], ["bl", "Bottom left"], ["tr", "Top right"], ["tl", "Top left"], ["c", "Centre"]]),
+    S("ovMargin", "Distance from the edge", [["20", "20 px"], ["10", "10 px"], ["40", "40 px"], ["80", "80 px"]], { show: { on: "ovPos", not: ["c"] } }),
+    S("ovWidth", "Logo width", [["", "Keep the logo's own size"], ["100", "100 px"], ["150", "150 px"], ["200", "200 px"], ["300", "300 px"], ["400", "400 px"]]),
+    S("ovOpacity", "See-through", [["", "Not at all (solid)"], ["0.8", "A little"], ["0.6", "Half"], ["0.4", "Quite a lot"], ["0.2", "Faint"]]),
+    S("ovQ", "Picture quality", [["1", "High quality (bigger file)"], ["2", "Good quality (balanced)"], ["3", "Smaller file"]], { def: "2" })
+  ]),
+
+  // ---- mix -----------------------------------------------------------------
+  sec("Combine files", at("mix"), [
+    T("mxVideo", "Video file", { ph: "video.mp4" }),
+    T("mxAudio", "Audio file (optional)", { ph: "music.mp3" }),
+    S("mxMode", "What to do with the audio", [["replace", "Replace the video's own sound"], ["add", "Add it as a second audio track"], ["mix", "Mix it with the video's own sound"]], { help: "Only matters if you gave an audio file." }),
+    T("mxVol", "Volume of the new audio", { ph: "0.3", show: when("mxMode", "mix"), help: "1 is normal, 0.3 is quiet background music." }),
+    T("mxSubs", "Subtitle file (optional)", { ph: "subs.srt", help: "Added as a track viewers can switch on and off." }),
+    C("mxCopy", "Don't re-encode the video (fast, no quality loss)", { def: true }),
+    C("mxShort", "Stop when the shortest file ends", { def: true, help: "Stops long music from keeping a short video running." })
+  ]),
+
+  // ---- concat --------------------------------------------------------------
+  sec("Join clips", at("concat"), [
+    A("ccFiles", "Clips, in order", { ph: "part1.mp4\npart2.mp4\npart3.mp4", help: "One file name per line." }),
+    S("ccMethod", "How to join", [["list", "Fast: clips are the same format and size (no re-encoding)"], ["filter", "Flexible: clips differ (re-encodes everything)"]]),
+    T("ccList", "List file name", { def: "list.txt", ph: "list.txt", show: when("ccMethod", "list"), help: "FFmpeg reads the clip names from this small text file. A note below shows what to put in it." }),
+    S("ccSize", "Video size", SIZES.slice(0, 1).concat([["1920:1080", "1920 x 1080 (landscape, fits with bars)"], ["1280:720", "1280 x 720"], ["1080:1920", "1080 x 1920 (vertical)"], ["1080:1080", "1080 x 1080 (square)"]]), { def: "1920:1080", show: when("ccMethod", "filter") }),
+    C("ccNoAudio", "None of the clips has sound", { show: when("ccMethod", "filter") })
+  ]),
+
+  sec("Output file", null, [
+    T("fOut", "Output file", { ph: "output.mp4", help: "The ending of the name (.mp4, .mkv, .webm, .mp3...) chooses the file type. Leave empty to use a sensible default for the task." })
+  ]),
+
+  sec("General options", null, [
+    S("gOverwrite", "If the output exists", [["", "Ask me (default)"], ["y", "Replace it without asking (-y)"], ["n", "Never replace it (-n)"]]),
+    C("gBanner", "Hide the long version banner", { def: true }),
+    S("gLog", "How much text to show", [["", "Normal (default)"], ["warning", "Quiet, but keep the progress line"], ["error", "Only errors"], ["info", "Everything FFmpeg says (verbose)"]]),
+    C("gNoStdin", "Don't wait for keyboard input (for scripts)"),
+    C("gStrip", "Remove metadata (titles, tags, location)", { help: "Good before sharing a file publicly." }),
+    T("gExtra", "Extra options of your own", { ph: "-threads 4", help: "Added just before the output file name. For anything this page doesn't cover." })
+  ])
+];
+
+var PRESETS = {
+  "MKV to MP4 without losing quality": { cmd: "convert", fIn: "input.mkv", fOut: "output.mp4", cvV: "copy", cvA: "copy" },
+  "Make a video play everywhere (H.264 + AAC)": { cmd: "convert", fIn: "input.mov", fOut: "output.mp4" },
+  "Remove the sound from a video": { cmd: "convert", fIn: "input.mp4", fOut: "silent.mp4", cvV: "copy", cvA: "none" },
+  "Shrink a video for sharing": { cmd: "compress", fIn: "input.mp4", fOut: "small.mp4", cpScale: "720", cpQ: "3" },
+  "Squeeze a video under 25 MB": { cmd: "compress", fIn: "input.mp4", fOut: "under25.mp4", cpMB: "25", cpDur: "00:03:00", cpScale: "720" },
+  "Cut a clip fast (no re-encoding)": { cmd: "trim", fIn: "input.mp4", fOut: "clip.mp4", trStart: "00:01:00", trEnd: "00:02:30", trMode: "copy" },
+  "Cut a clip exactly": { cmd: "trim", fIn: "input.mp4", fOut: "clip.mp4", trStart: "00:01:00", trLen: "30", trMode: "exact" },
+  "Extract the audio as MP3": { cmd: "audio", fIn: "video.mp4", fOut: "audio.mp3", auFmt: "mp3", auBr: "192k" },
+  "Even out a podcast's loudness": { cmd: "audio", fIn: "episode.wav", fOut: "episode.m4a", auFmt: "m4a", auBr: "128k", auNorm: true, auCh: "1" },
+  "Short GIF from a video": { cmd: "gif", fIn: "input.mp4", fOut: "clip.gif", gfStart: "00:00:05", gfLen: "4", gfWidth: "480", gfFps: "12" },
+  "Thumbnail at 10 seconds": { cmd: "frames", fIn: "input.mp4", fOut: "thumb.jpg", frMode: "one", frTime: "10", frFmt: "jpg", frWidth: "640" },
+  "Contact sheet of a movie": { cmd: "frames", fIn: "movie.mp4", fOut: "sheet.jpg", frMode: "sheet", frEvery: "30", frFmt: "jpg", frWidth: "320", frCols: "5", frRows: "4" },
+  "Photo slideshow, 3 seconds each": { cmd: "slideshow", fOut: "slideshow.mp4", ssPat: "photo%03d.jpg", ssSecs: "3", ssSize: "1920:1080" },
+  "Vertical video for Reels and TikTok": { cmd: "edit", fIn: "landscape.mp4", fOut: "vertical.mp4", edCrop: "916", edScaleCustom: "1080:1920" },
+  "Rotate a sideways phone video": { cmd: "edit", fIn: "input.mp4", fOut: "rotated.mp4", edRot: "cw" },
+  "Double speed": { cmd: "edit", fIn: "input.mp4", fOut: "fast.mp4", edSpeed: "2" },
+  "Add a logo in the corner": { cmd: "overlay", fIn: "input.mp4", fOut: "branded.mp4", ovLogo: "logo.png", ovPos: "br", ovWidth: "150", ovOpacity: "0.8" },
+  "Replace a video's sound": { cmd: "mix", fOut: "dubbed.mp4", mxVideo: "video.mp4", mxAudio: "newaudio.mp3", mxMode: "replace" },
+  "Add quiet background music": { cmd: "mix", fOut: "with-music.mp4", mxVideo: "video.mp4", mxAudio: "music.mp3", mxMode: "mix", mxVol: "0.25" },
+  "Join clips of the same type": { cmd: "concat", fOut: "joined.mp4", ccFiles: "part1.mp4\npart2.mp4\npart3.mp4", ccMethod: "list" }
+};
+
+// ---- helpers -----------------------------------------------------------------
+var VNAME = { libx264: "H.264", libx265: "H.265 (HEVC)", libsvtav1: "AV1", "libvpx-vp9": "VP9", h264_nvenc: "H.264 (NVIDIA)", hevc_nvenc: "H.265 (NVIDIA)", h264_videotoolbox: "H.264 (Mac hardware)", hevc_videotoolbox: "H.265 (Mac hardware)" };
+var QTAB = {
+  libx264: ["-crf", ["18", "23", "28", "32"]],
+  libx265: ["-crf", ["22", "28", "32", "36"]],
+  libsvtav1: ["-crf", ["24", "32", "40", "48"]],
+  "libvpx-vp9": ["-crf", ["24", "31", "37", "42"]],
+  h264_nvenc: ["-cq", ["19", "24", "30", "36"]],
+  hevc_nvenc: ["-cq", ["21", "26", "32", "38"]],
+  h264_videotoolbox: ["-q:v", ["75", "60", "45", "30"]],
+  hevc_videotoolbox: ["-q:v", ["75", "60", "45", "30"]]
+};
+var QWORD = ["high quality", "balanced quality", "a smaller file", "the smallest file"];
+var ANAME = { aac: "AAC", libopus: "Opus", libmp3lame: "MP3", libvorbis: "Vorbis", flac: "FLAC", pcm_s16le: "WAV (uncompressed)", ac3: "Dolby AC-3" };
+
+function trim(v) { return (v || "").trim(); }
+function extOf(f) { var m = /\.([A-Za-z0-9]+)$/.exec(trim(f)); return m ? m[1].toLowerCase() : ""; }
+function eachLine(str, f) { lines(str).forEach(f); }
+function fmtNum(n) { return String(Math.round(n * 1000) / 1000); }
+// "90", "1:30", "01:02:03.5"  ->  seconds, or null
+function parseTime(t) {
+  t = trim(t);
+  if (!t || !/^\d+(:\d+){0,2}(\.\d+)?$/.test(t)) return null;
+  var p = t.split(":").map(parseFloat), s = 0;
+  p.forEach(function (x) { s = s * 60 + x; });
+  return s;
+}
+function scaleFilter(menu, custom, warn) {
+  var c = trim(custom).replace(/x/i, ":");
+  if (c) {
+    if (!/^-?\d+(:-?\d+)?$/.test(c)) { warn("The size \"" + trim(custom) + "\" should look like 1280x720 or 640."); return ""; }
+    if (c.indexOf(":") < 0) c += ":-2";
+    return "scale=" + c;
+  }
+  return menu ? "scale=-2:" + menu : "";
+}
+function fesc(p) {
+  p = p.replace(/\\/g, "/");
+  if (/^[A-Za-z0-9_.\/-]+$/.test(p)) return p;
+  return "'" + p.replace(/:/g, "\\:").replace(/'/g, "'\\\\\\''") + "'";
+}
+
+function globalOpts(b, s) {
+  if (s.gBanner) b.head("Hide the long version banner", ["-hide_banner"]);
+  if (s.gLog === "warning") { b.head("Show only warnings and errors", ["-loglevel", "warning"]); b.head("Still show the progress line", ["-stats"]); }
+  else if (s.gLog) b.head("Show only '" + s.gLog + "' level messages", ["-loglevel", s.gLog]);
+  if (s.gOverwrite === "y") b.head("Replace the output file without asking", ["-y"]);
+  if (s.gOverwrite === "n") b.head("Never replace an existing output file", ["-n"]);
+  if (s.gNoStdin) b.head("Don't read from the keyboard", ["-nostdin"]);
+}
+function inputFile(b, s, what) {
+  if (trim(s.fIn)) b.add(what || "The input file", ["-i", trim(s.fIn)]);
+  else b.warn("Enter the input file.");
+}
+function finish(b, s, def, kind) {
+  if (s.gStrip) b.add("Remove metadata such as titles, tags and location", ["-map_metadata", "-1"]);
+  splitArgs(s.gExtra).forEach(function (x) { b.add("Your extra option", [x]); });
+  var o = trim(s.fOut);
+  b.add(o ? "The output file" : "The output file (a default name; type your own under 'Output file')", [o || def]);
+  if (o && trim(s.fIn) && o === trim(s.fIn)) b.warn("The output has the same name as the input. FFmpeg can't write to a file it is reading; choose a different name.");
+  if (kind === "video" && o && ["gif", "mp3", "wav", "flac", "m4a", "ogg", "opus", "aac", "png", "jpg", "jpeg", "webp"].indexOf(extOf(o)) > -1)
+    b.warn("The output name ends in ." + extOf(o) + ", which isn't a video type. Change it to something like .mp4 or .mkv under 'Output file'.");
+  return o || def;
+}
+function vEncode(b, codec, q, speed, kbps) {
+  var t = QTAB[codec], i = Math.max(0, Math.min(3, (parseInt(q, 10) || 2) - 1));
+  b.add("Encode the video as " + VNAME[codec], ["-c:v", codec]);
+  if (kbps) {
+    b.add("Aim for about " + kbps + " kbps of video, which sets the file size", ["-b:v", kbps + "k"]);
+  } else {
+    if (/nvenc/.test(codec)) b.add("Variable bitrate, steered by quality", ["-rc", "vbr"]);
+    var hw = /videotoolbox/.test(codec);
+    b.add("Quality setting for " + QWORD[i] + (hw ? " (higher is better)" : " (lower is better, but a bigger file)"), [t[0], t[1][i]]);
+    if (codec === "libvpx-vp9" || /nvenc/.test(codec)) b.add("Let the quality setting decide the bitrate", ["-b:v", "0"]);
+  }
+  if (codec === "libx264" || codec === "libx265") b.add("Encoding speed: " + speed, ["-preset", speed]);
+  if (codec === "libsvtav1") b.add("Encoding speed: " + speed, ["-preset", { veryfast: "10", fast: "8", medium: "6", slow: "4", veryslow: "2" }[speed] || "6"]);
+  if (codec === "libvpx-vp9") {
+    b.add("Encoding speed: " + speed, ["-deadline", "good", "-cpu-used", { veryfast: "5", fast: "4", medium: "2", slow: "1", veryslow: "0" }[speed] || "2"]);
+    b.add("Use several CPU cores", ["-row-mt", "1"]);
+  }
+}
+function aEncode(b, codec, br, ch, sr) {
+  if (codec === "none") { b.add("Remove the audio", ["-an"]); return; }
+  if (codec === "copy") { b.add("Copy the audio without re-encoding", ["-c:a", "copy"]); return; }
+  b.add("Encode the audio as " + ANAME[codec], ["-c:a", codec]);
+  if (br && codec !== "flac" && codec !== "pcm_s16le") b.add("Audio bitrate " + br, ["-b:a", br]);
+  if (ch) b.add(ch === "1" ? "Mono sound" : "Stereo sound", ["-ac", ch]);
+  if (sr) b.add("Sample rate " + sr + " Hz", ["-ar", sr]);
+}
+function mp4ish(e) { return e === "mp4" || e === "m4v" || e === "mov"; }
+function tempoChain(f) {
+  var out = [];
+  while (f > 2) { out.push("2"); f /= 2; }
+  while (f < 0.5) { out.push("0.5"); f /= 0.5; }
+  out.push(fmtNum(f));
+  return out.map(function (x) { return "atempo=" + x; }).join(",");
+}
+var CROPS = {
+  sq: "crop=min(iw\\,ih):min(iw\\,ih)",
+  "169": "crop=min(iw\\,ih*16/9):min(ih\\,iw*9/16)",
+  "916": "crop=min(iw\\,ih*9/16):min(ih\\,iw*16/9)",
+  "45": "crop=min(iw\\,ih*4/5):min(ih\\,iw*5/4)"
+};
+var PADFIT = function (sz, bg) { return "scale=" + sz + ":force_original_aspect_ratio=decrease,pad=" + sz + ":(ow-iw)/2:(oh-ih)/2" + (bg ? ":color=" + bg : "") + ",setsar=1"; };
+
+function build(s) {
+  var b = Builder(s), c = s.cmd, e;
+  globalOpts(b, s);
+
+  switch (c) {
+  case "convert":
+    inputFile(b, s);
+    e = extOf(s.fOut) || "mp4";
+    if (s.cvAll) b.add("Keep every stream (all audio tracks and subtitles)", ["-map", "0"]);
+    var cv = s.cvV;
+    if (cv === "copy" || cv === "none") {
+      if (cv === "copy") b.add("Copy the video without re-encoding", ["-c:v", "copy"]); else b.add("Leave the video out", ["-vn"]);
+      if (cv === "copy" && (trim(s.cvScaleCustom) || s.cvScale || s.cvFps)) b.warn("The video is being copied, so the size and frame rate settings can't apply. Pick a codec to change them.");
+    } else {
+      vEncode(b, cv, s.cvQ, s.cvSpeed);
+      var sf = scaleFilter(s.cvScale, s.cvScaleCustom, function (m) { b.warn(m); });
+      if (sf) b.add("Resize the picture", ["-vf", sf]);
+      if (s.cvFps) b.add("Make it " + s.cvFps + " frames per second", ["-r", s.cvFps]);
+      if (s.cvPix) b.add("Use the most compatible colour format", ["-pix_fmt", "yuv420p"]);
+      if (s.cvHvc1 && /265|hevc/.test(cv) && mp4ish(e)) b.add("Tag it so Apple players recognise the HEVC video", ["-tag:v", "hvc1"]);
+    }
+    aEncode(b, s.cvA, s.cvAbr, s.cvAch, s.cvAsr);
+    if (s.cvFast && mp4ish(e)) b.add("Put the index at the start so it can play while loading", ["-movflags", "+faststart"]);
+    finish(b, s, "output.mp4");
+    // warnings
+    if (e === "webm") {
+      if (cv !== "libvpx-vp9" && cv !== "libsvtav1" && cv !== "none") b.warn("WebM only holds VP9 or AV1 video. Pick one of those, or use .mp4 or .mkv.");
+      if (["libopus", "libvorbis", "none"].indexOf(s.cvA) < 0) b.warn("WebM only holds Opus or Vorbis audio.");
+    }
+    if (mp4ish(e) && s.cvA === "libvorbis") b.warn("Vorbis audio doesn't belong in an MP4. Use AAC or Opus.");
+    if (mp4ish(e) && cv === "libvpx-vp9") b.warn("VP9 inside an MP4 works in FFmpeg and browsers, but many players can't open it. WebM or MKV is safer.");
+    if (["mp3", "wav", "flac", "m4a", "ogg", "opus", "aac"].indexOf(e) > -1 && cv !== "none") b.warn("The output name ends in ." + e + " (an audio-only type). Choose 'No video' or use the 'Extract or convert audio' task.");
+    if (e === "gif") b.warn("For GIFs use the 'Make an animated GIF' task; it gives much better colours.");
+    if (/nvenc|videotoolbox/.test(cv)) b.warn("Hardware encoders need the right graphics card or Mac, and a copy of FFmpeg built with support for it. If you get an error, switch to H.264 (libx264).");
+    if (s.cvAll && mp4ish(e)) b.warn("MP4 can't hold every kind of extra track (some subtitle types fail). MKV accepts nearly everything.");
+    break;
+
+  case "compress":
+    inputFile(b, s);
+    e = extOf(s.fOut) || "mp4";
+    var cc = s.cpCodec, kbps = 0, secs = parseTime(s.cpDur), mb = parseFloat(s.cpMB);
+    var aK = { aac128: 128, aac96: 96, aac64: 64 }[s.cpA] || 0;
+    if (trim(s.cpMB)) {
+      if (!(mb > 0)) b.warn("The target size should be a number of megabytes, like 25.");
+      else if (!(secs > 0)) b.warn("To aim for a file size, enter the video length (for example 00:03:00).");
+      else {
+        kbps = Math.floor(mb * 8000 * 0.95 / secs - aK);
+        if (kbps < 50) { b.warn("That target is too small for this length. Raise the size or shorten the video."); kbps = 0; }
+        else if (s.cpA === "copy") b.warn("The size estimate doesn't count the original audio, which is being copied. Use an AAC bitrate for a more accurate size.");
+      }
+    }
+    vEncode(b, cc, s.cpQ, s.cpSpeed, kbps);
+    var csf = scaleFilter(s.cpScale, "", function () {});
+    if (csf) b.add("Shrink the picture", ["-vf", csf]);
+    b.add("Use the most compatible colour format", ["-pix_fmt", "yuv420p"]);
+    if (cc === "libx265" && mp4ish(e)) b.add("Tag it so Apple players recognise the HEVC video", ["-tag:v", "hvc1"]);
+    if (s.cpA === "none") b.add("Remove the audio", ["-an"]);
+    else if (s.cpA === "copy") b.add("Copy the audio without re-encoding", ["-c:a", "copy"]);
+    else { b.add("Encode the audio as AAC", ["-c:a", "aac"]); b.add("Audio bitrate " + aK + " kbps", ["-b:a", aK + "k"]); }
+    if (mp4ish(e)) b.add("Put the index at the start so it can play while loading", ["-movflags", "+faststart"]);
+    finish(b, s, "compressed.mp4", "video");
+    if (kbps) b.warn("Aiming for a size is approximate. The file can land a bit over or under, so leave some room. (Exact sizes need a two-pass encode.)");
+    if (e === "webm") b.warn("WebM needs VP9 or AV1 video and Opus or Vorbis audio, which this task doesn't produce. Use .mp4 or .mkv.");
+    break;
+
+  case "trim":
+    var st = parseTime(s.trStart), en = parseTime(s.trEnd), ln = parseTime(s.trLen), dur = null;
+    if (trim(s.trStart) && st === null) b.warn("The start time \"" + trim(s.trStart) + "\" should look like 90 or 00:01:30.");
+    if (trim(s.trEnd) && en === null) b.warn("The end time \"" + trim(s.trEnd) + "\" should look like 130 or 00:02:10.");
+    if (trim(s.trLen) && ln === null) b.warn("The length \"" + trim(s.trLen) + "\" should be a number of seconds, or hours:minutes:seconds.");
+    if (ln !== null) dur = ln;
+    else if (en !== null) { dur = en - (st || 0); if (dur <= 0) { b.warn("The end time must be after the start time."); dur = null; } }
+    if (st !== null) b.add("Jump to " + trim(s.trStart) + " before reading", ["-ss", trim(s.trStart)]);
+    inputFile(b, s);
+    if (dur !== null) b.add("Keep " + fmtNum(dur) + " seconds", ["-t", fmtNum(dur)]);
+    if (!trim(s.trStart) && !trim(s.trEnd) && !trim(s.trLen)) b.warn("Enter a start time, an end time or a length.");
+    if (s.trMode === "copy") {
+      b.add("Copy every stream without re-encoding", ["-c", "copy"]);
+      b.add("Start the clip's clock at zero", ["-avoid_negative_ts", "make_zero"]);
+      b.warn("A fast cut starts at the nearest keyframe, so the clip can begin a moment early or open with a short frozen frame. Choose 'Exact' for a precise cut.");
+    }
+    finish(b, s, "clip." + (extOf(s.fIn) || "mp4"));
+    break;
+
+  case "audio":
+    var fm = s.auFmt, AC = { mp3: "libmp3lame", m4a: "aac", opus: "libopus", ogg: "libvorbis", flac: "flac", wav: "pcm_s16le" };
+    if (trim(s.auStart)) b.add("Start at " + trim(s.auStart), ["-ss", trim(s.auStart)]);
+    inputFile(b, s);
+    if (trim(s.auLen)) b.add("Keep " + trim(s.auLen) + " seconds", ["-t", trim(s.auLen)]);
+    b.add("Ignore any video", ["-vn"]);
+    if (trim(s.auTrack)) {
+      var tn = parseInt(s.auTrack, 10);
+      if (tn >= 1) b.add("Use audio track number " + tn, ["-map", "0:a:" + (tn - 1)]); else b.warn("The track number should be 1 or higher.");
+    }
+    if (fm === "copy") b.add("Copy the audio without re-encoding", ["-c:a", "copy"]);
+    else {
+      b.add("Encode the audio as " + ANAME[AC[fm]], ["-c:a", AC[fm]]);
+      if (s.auBr && /mp3|m4a|opus|ogg/.test(fm)) b.add("Audio bitrate " + s.auBr, ["-b:a", s.auBr]);
+      if (s.auCh) b.add(s.auCh === "1" ? "Mono sound" : "Stereo sound", ["-ac", s.auCh]);
+      if (s.auSr) b.add("Sample rate " + s.auSr + " Hz", ["-ar", s.auSr]);
+      var af = [];
+      if (trim(s.auGain)) { if (/^[+-]?\d+(\.\d+)?$/.test(trim(s.auGain))) af.push("volume=" + trim(s.auGain) + "dB"); else b.warn("The volume change should be a number of decibels, like 6 or -3."); }
+      if (s.auNorm) af.push("loudnorm");
+      if (af.length) b.add("Adjust the sound (" + af.join(", ") + ")", ["-af", af.join(",")]);
+    }
+    var oe = extOf(s.fOut), okExt = { mp3: ["mp3"], m4a: ["m4a", "mp4", "aac", "mka"], opus: ["opus", "ogg", "oga", "webm", "mka"], ogg: ["ogg", "oga", "webm", "mka"], flac: ["flac", "mka", "ogg"], wav: ["wav"], copy: [] }[fm];
+    finish(b, s, "audio." + (fm === "copy" ? "mka" : fm));
+    if (oe && fm !== "copy" && okExt.indexOf(oe) < 0) b.warn("The output ends in ." + oe + " but you chose " + fm.toUpperCase() + ". Rename it to .{ext} or pick a matching format.".replace("{ext}", fm));
+    if (fm === "copy") b.warn("Copying keeps the original audio format, so the file name must end in a type that holds it (for example .m4a for AAC, .mp3 for MP3). .mka (Matroska audio) holds anything.");
+    break;
+
+  case "gif":
+    var gs = parseTime(s.gfStart), gl = parseTime(s.gfLen);
+    if (gs !== null) b.add("Start at " + trim(s.gfStart), ["-ss", trim(s.gfStart)]);
+    inputFile(b, s);
+    if (gl !== null) { b.add("Keep " + fmtNum(gl) + " seconds", ["-t", fmtNum(gl)]); if (gl > 10) b.warn("A GIF longer than about 10 seconds gets very large. Consider a short MP4 or WebM instead."); }
+    else b.warn("Enter a length in seconds. Without one the whole video becomes a GIF, which can be huge.");
+    var gv = ["fps=" + s.gfFps];
+    if (s.gfWidth) gv.push("scale=" + s.gfWidth + ":-1:flags=lanczos");
+    var vf = gv.join(",");
+    if (s.gfQ === "pal") {
+      vf += ",split[s0][s1];[s0]palettegen=max_colors=" + s.gfColors + "[p];[s1][p]paletteuse=dither=" + s.gfDither + (s.gfDither === "bayer" ? ":bayer_scale=5" : "");
+      b.add("Make a custom colour palette, then draw the GIF with it", ["-vf", vf]);
+    } else b.add("Convert to " + s.gfFps + " frames per second" + (s.gfWidth ? " at " + s.gfWidth + " px wide" : ""), ["-vf", vf]);
+    b.add("Repeat: " + ({ "0": "forever", "-1": "play once" }[s.gfLoop] || s.gfLoop + " times"), ["-loop", s.gfLoop]);
+    finish(b, s, "output.gif");
+    if (trim(s.fOut) && extOf(s.fOut) !== "gif") b.warn("The output should end in .gif.");
+    break;
+
+  case "frames":
+    var fmode = s.frMode, fe = s.frFmt;
+    if (fmode === "one") {
+      if (trim(s.frTime)) b.add("Jump to " + trim(s.frTime), ["-ss", trim(s.frTime)]); else b.warn("Enter the time of the picture you want.");
+    }
+    inputFile(b, s);
+    var fv = [];
+    if (fmode === "every") { var ev = parseFloat(s.frEvery); if (ev > 0) fv.push("fps=1/" + fmtNum(ev)); else b.warn("Enter how many seconds between pictures."); }
+    if (fmode === "sheet") { var ev2 = parseFloat(s.frEvery); if (ev2 > 0) fv.push("fps=1/" + fmtNum(ev2)); else b.warn("Enter how many seconds between thumbnails."); }
+    if (s.frWidth) fv.push("scale=" + s.frWidth + ":-2");
+    if (fmode === "sheet") fv.push("tile=" + s.frCols + "x" + s.frRows);
+    if (fv.length) b.add(fmode === "sheet" ? "Shrink the thumbnails and tile them into a grid" : "Pick and resize the pictures", ["-vf", fv.join(",")]);
+    if (fmode === "one" || fmode === "sheet") b.add("Save just one picture", ["-frames:v", "1"]);
+    if (fe === "jpg") b.add("JPG quality (lower number is better)", ["-q:v", s.frQ]);
+    var defName = (fmode === "every" || fmode === "all") ? "frame_%04d." + fe : (fmode === "sheet" ? "sheet." : "frame.") + fe;
+    if (fmode === "one" || fmode === "sheet") defName = (fmode === "sheet" ? "sheet." : "frame.") + fe;
+    var fo = finish(b, s, defName);
+    if ((fmode === "every" || fmode === "all") && fo.indexOf("%") < 0) b.warn("Use a numbered pattern like frame_%04d.png so each picture gets its own file.");
+    if ((fmode === "one" || fmode === "sheet") && fo.indexOf("%") > -1) b.warn("Only one picture is saved, so the name doesn't need %04d.");
+    if (fmode === "all") b.warn("This can create thousands of files. Make sure the folder has room.");
+    if (extOf(fo) && extOf(fo) !== fe && !(fe === "jpg" && extOf(fo) === "jpeg")) b.warn("The output ends in ." + extOf(fo) + " but you chose " + fe.toUpperCase() + ". The file name decides the real format.");
+    break;
+
+  case "slideshow":
+    var sd = parseFloat(s.ssSecs), fr = sd >= 1 ? (sd === 1 ? "1" : "1/" + fmtNum(sd)) : fmtNum(1 / sd);
+    b.add("Show each picture for " + s.ssSecs + " s (read " + fr + " picture per second)", ["-framerate", fr]);
+    if (s.ssGlob) b.add("Match files with a wildcard", ["-pattern_type", "glob"]);
+    else if (trim(s.ssStart)) b.add("Start at picture number " + trim(s.ssStart), ["-start_number", trim(s.ssStart)]);
+    if (trim(s.ssPat)) b.add("The pictures", ["-i", trim(s.ssPat)]); else b.warn("Enter the pictures' name pattern, such as photo%03d.jpg.");
+    if (trim(s.ssAudio)) b.add("The music", ["-i", trim(s.ssAudio)]);
+    var sv = [];
+    if (s.ssSize) sv.push(PADFIT(s.ssSize, s.ssBg));
+    sv.push("format=yuv420p");
+    b.add("Fit every picture to the video size", ["-vf", sv.join(",")]);
+    b.add("Encode as H.264", ["-c:v", "libx264"]);
+    b.add("Make it " + s.ssFps + " frames per second", ["-r", s.ssFps]);
+    if (trim(s.ssAudio)) { b.add("Encode the music as AAC", ["-c:a", "aac"]); b.add("Stop when the shorter one ends", ["-shortest"]); }
+    b.add("Put the index at the start so it can play while loading", ["-movflags", "+faststart"]);
+    finish(b, s, "slideshow.mp4", "video");
+    if (trim(s.ssPat) && !s.ssGlob && trim(s.ssPat).indexOf("%") < 0) b.warn("The pattern needs a %03d-style number in it (photo%03d.jpg), or tick the wildcard option.");
+    if (s.ssGlob && trim(s.ssPat).indexOf("*") < 0) b.warn("A wildcard pattern should contain a *, for example *.jpg.");
+    break;
+
+  case "edit":
+    inputFile(b, s);
+    var vfs = [], afs = [], any = false;
+    if (s.edCrop) {
+      if (s.edCrop === "custom") {
+        if (/^\d+:\d+(:\d+:\d+)?$/.test(trim(s.edCropCustom))) vfs.push("crop=" + trim(s.edCropCustom)); else b.warn("Your crop should look like 1280:720:0:100 (width:height:left:top).");
+      } else vfs.push(CROPS[s.edCrop]);
+    }
+    var esf = scaleFilter(s.edScale, s.edScaleCustom, function (m) { b.warn(m); });
+    if (esf) vfs.push(esf); else if (vfs.length) vfs.push("scale=trunc(iw/2)*2:trunc(ih/2)*2");
+    if (s.edRot) vfs.push({ cw: "transpose=1", ccw: "transpose=2", "180": "transpose=1,transpose=1", h: "hflip", v: "vflip" }[s.edRot]);
+    if (s.edGray) vfs.push("hue=s=0");
+    if (s.edDenoise) vfs.push("hqdn3d");
+    if (s.edSpeed) { vfs.push("setpts=PTS/" + s.edSpeed); if (s.edVol !== "mute") afs.push(tempoChain(parseFloat(s.edSpeed))); }
+    if (trim(s.edSubs)) vfs.push("subtitles=" + fesc(trim(s.edSubs)));
+    if (s.edVol === "norm") afs.push("loudnorm");
+    else if (s.edVol && s.edVol !== "mute") afs.push("volume=" + s.edVol + "dB");
+    if (vfs.length) b.add("Change the picture: " + vfs.length + " step" + (vfs.length === 1 ? "" : "s"), ["-vf", vfs.join(",")]);
+    if (afs.length) b.add("Change the sound", ["-af", afs.join(",")]);
+    if (!vfs.length && !afs.length && s.edVol !== "mute") b.warn("Nothing selected to change yet. Pick a size, crop, rotation, speed or sound option.");
+    b.add("Encode the video as H.264", ["-c:v", "libx264"]);
+    b.add("Quality setting (lower is better, but a bigger file)", ["-crf", ["18", "23", "28"][(parseInt(s.edQ, 10) || 2) - 1]]);
+    b.add("Use the most compatible colour format", ["-pix_fmt", "yuv420p"]);
+    if (s.edVol === "mute") b.add("Remove the sound", ["-an"]);
+    else if (afs.length) { b.add("Encode the audio as AAC", ["-c:a", "aac"]); b.add("Audio bitrate 192 kbps", ["-b:a", "192k"]); }
+    else b.add("Copy the audio without re-encoding", ["-c:a", "copy"]);
+    if (mp4ish(extOf(s.fOut) || "mp4")) b.add("Put the index at the start so it can play while loading", ["-movflags", "+faststart"]);
+    finish(b, s, "edited.mp4", "video");
+    if (s.edSpeed && parseFloat(s.edSpeed) > 4) b.warn("At this speed the sound becomes very choppy. Consider removing it.");
+    break;
+
+  case "overlay":
+    inputFile(b, s, "The video");
+    if (trim(s.ovLogo)) b.add("The logo picture", ["-i", trim(s.ovLogo)]); else b.warn("Enter the logo file.");
+    var m = s.ovMargin || "20", pos = { br: "W-w-" + m + ":H-h-" + m, bl: m + ":H-h-" + m, tr: "W-w-" + m + ":" + m, tl: m + ":" + m, c: "(W-w)/2:(H-h)/2" }[s.ovPos];
+    var lchain = [];
+    if (s.ovWidth) lchain.push("scale=" + s.ovWidth + ":-1");
+    if (s.ovOpacity) lchain.push("format=rgba", "colorchannelmixer=aa=" + s.ovOpacity);
+    var fc = lchain.length ? "[1:v]" + lchain.join(",") + "[wm];[0:v][wm]overlay=" + pos : "[0:v][1:v]overlay=" + pos;
+    b.add("Place the logo " + ({ br: "bottom right", bl: "bottom left", tr: "top right", tl: "top left", c: "in the centre" }[s.ovPos]) + " of the video", ["-filter_complex", fc]);
+    b.add("Encode the video as H.264", ["-c:v", "libx264"]);
+    b.add("Quality setting (lower is better, but a bigger file)", ["-crf", ["18", "23", "28"][(parseInt(s.ovQ, 10) || 2) - 1]]);
+    b.add("Use the most compatible colour format", ["-pix_fmt", "yuv420p"]);
+    b.add("Copy the audio without re-encoding", ["-c:a", "copy"]);
+    if (mp4ish(extOf(s.fOut) || "mp4")) b.add("Put the index at the start so it can play while loading", ["-movflags", "+faststart"]);
+    finish(b, s, "watermarked.mp4", "video");
+    break;
+
+  case "mix":
+    var vE = extOf(s.fOut) || "mp4", hasA = !!trim(s.mxAudio), hasS = !!trim(s.mxSubs), ai = 1, si = hasA ? 2 : 1;
+    if (trim(s.mxVideo)) b.add("The video file", ["-i", trim(s.mxVideo)]); else b.warn("Enter the video file.");
+    if (hasA) b.add("The audio file", ["-i", trim(s.mxAudio)]);
+    if (hasS) b.add("The subtitle file", ["-i", trim(s.mxSubs)]);
+    if (hasA && s.mxMode === "mix") {
+      var vol = trim(s.mxVol) || "1";
+      b.add("Turn the new audio to " + vol + "x and blend it with the original sound", ["-filter_complex", "[1:a]volume=" + vol + "[bg];[0:a][bg]amix=inputs=2:duration=first[aout]"]);
+      b.add("Use the picture from the first file", ["-map", "0:v"]);
+      b.add("Use the blended sound", ["-map", "[aout]"]);
+    } else if (hasA && s.mxMode === "add") {
+      b.add("Use the picture from the first file", ["-map", "0:v"]);
+      b.add("Keep the original sound if there is any", ["-map", "0:a?"]);
+      b.add("Add the new audio as another track", ["-map", "1:a"]);
+    } else if (hasA) {
+      b.add("Use the picture from the first file", ["-map", "0:v"]);
+      b.add("Use the sound from the audio file instead", ["-map", "1:a"]);
+    } else if (hasS) {
+      b.add("Keep everything from the first file", ["-map", "0"]);
+    }
+    if (hasS) b.add("Add the subtitles as a track", ["-map", si + ":0"]);
+    if (s.mxCopy) b.add("Copy the video without re-encoding", ["-c:v", "copy"]);
+    else { b.add("Encode the video as H.264", ["-c:v", "libx264"]); b.add("Quality setting", ["-crf", "20"]); b.add("Use the most compatible colour format", ["-pix_fmt", "yuv420p"]); }
+    if (hasA) { b.add("Encode the audio as AAC", ["-c:a", "aac"]); b.add("Audio bitrate 192 kbps", ["-b:a", "192k"]); }
+    else b.add("Copy the audio without re-encoding", ["-c:a", "copy"]);
+    if (hasS) {
+      if (mp4ish(vE)) b.add("Store the subtitles in MP4's text format", ["-c:s", "mov_text"]);
+      else if (vE === "webm") b.add("Store the subtitles in WebVTT format", ["-c:s", "webvtt"]);
+    }
+    if (hasA && s.mxShort) b.add("Stop when the shortest input ends", ["-shortest"]);
+    finish(b, s, "combined.mp4", "video");
+    if (!hasA && !hasS) b.warn("Add an audio file, a subtitle file, or both.");
+    if (hasS && /\.(ass|ssa)$/i.test(trim(s.mxSubs)) && mp4ish(vE)) b.warn("MP4 only keeps plain text subtitles, so .ass styling is lost. Use .mkv to keep it.");
+    if (hasA && s.mxMode === "mix") b.warn("Mixing needs the video to have sound already. If it has none, use 'Replace'.");
+    break;
+
+  case "concat":
+    var files = lines(s.ccFiles), cm = s.ccMethod;
+    if (files.length < 2) b.warn("List at least two clips, one per line.");
+    if (cm === "list") {
+      b.add("Read the clips from a list file", ["-f", "concat"]);
+      b.add("Allow any file path in the list", ["-safe", "0"]);
+      b.add("The list file", ["-i", trim(s.ccList) || "list.txt"]);
+      b.add("Copy everything without re-encoding", ["-c", "copy"]);
+      finish(b, s, "joined.mp4", "video");
+      if (files.length) b.warn("Not part of the command: first create a plain text file named " + (trim(s.ccList) || "list.txt") + " containing these lines: " + files.map(function (f) { return "file '" + f.replace(/'/g, "'\\''") + "'"; }).join("   |   ") + " (one per line).");
+      b.warn("Joining without re-encoding only works if every clip has the same codec, size, frame rate and audio settings. If the result glitches, use the 'Flexible' method.");
+    } else {
+      files.forEach(function (f) { b.add("Clip", ["-i", f]); });
+      var parts = [], links = "", n = files.length, sz = s.ccSize;
+      files.forEach(function (f, i) {
+        parts.push("[" + i + ":v]" + (sz ? PADFIT(sz, "black") : "setsar=1") + "[v" + i + "]");
+        if (!s.ccNoAudio) parts.push("[" + i + ":a]aformat=sample_rates=48000:channel_layouts=stereo[a" + i + "]");
+        links += "[v" + i + "]" + (s.ccNoAudio ? "" : "[a" + i + "]");
+      });
+      var graph = parts.join(";") + ";" + links + "concat=n=" + n + ":v=1:a=" + (s.ccNoAudio ? "0" : "1") + (s.ccNoAudio ? "[v]" : "[v][a]");
+      if (n >= 2) {
+        b.add("Fit the clips to the same size, then join them in order", ["-filter_complex", graph]);
+        b.add("Use the joined picture", ["-map", "[v]"]);
+        if (!s.ccNoAudio) b.add("Use the joined sound", ["-map", "[a]"]);
+        b.add("Encode the video as H.264", ["-c:v", "libx264"]);
+        b.add("Quality setting", ["-crf", "20"]);
+        b.add("Use the most compatible colour format", ["-pix_fmt", "yuv420p"]);
+        if (!s.ccNoAudio) { b.add("Encode the audio as AAC", ["-c:a", "aac"]); b.add("Audio bitrate 192 kbps", ["-b:a", "192k"]); }
+        if (mp4ish(extOf(s.fOut) || "mp4")) b.add("Put the index at the start so it can play while loading", ["-movflags", "+faststart"]);
+      }
+      finish(b, s, "joined.mp4", "video");
+      if (!s.ccNoAudio) b.warn("Every clip needs an audio track. If one has none, tick 'None of the clips has sound'.");
+    }
+    break;
+  }
+  return { groups: b.g, warnings: b.w };
+}
+
+
+// ---- UI ------------------------------------------------------------------
+if (typeof document !== "undefined") {
+  var $ = function (id) { return document.getElementById(id); };
+  var rows = {}, sets = [];
+
+  function make(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+
+  function render() {
+    var host = $("form");
+    SECTIONS.forEach(function (sc) {
+      var fs = make("fieldset");
+      fs.appendChild(make("legend", "", sc.title));
+      sc.fields.forEach(function (f) {
+        var row = make("div", "row");
+        var lblWrap = make("div", "lbl");
+        var lbl = make("label", "", f.label); lbl.htmlFor = f.id; lblWrap.appendChild(lbl);
+        var cell = make("div");
+        var inp;
+        if (f.type === "select") {
+          inp = make("select");
+          f.opts.forEach(function (o) { inp.appendChild(new Option(o[1], o[0])); });
+        } else if (f.type === "check") {
+          inp = make("input"); inp.type = "checkbox";
+        } else if (f.type === "area") {
+          inp = make("textarea"); inp.rows = 4; inp.spellcheck = false;
+        } else {
+          inp = make("input"); inp.type = "text"; inp.autocomplete = "off"; inp.spellcheck = false;
+        }
+        inp.id = f.id;
+        if (f.ph) inp.placeholder = f.ph;
+        cell.appendChild(inp);
+        if (f.help) cell.appendChild(make("div", "help", f.help));
+        row.appendChild(lblWrap); row.appendChild(cell);
+        fs.appendChild(row);
+        rows[f.id] = row;
+      });
+      host.appendChild(fs);
+      sets.push({ el: fs, sec: sc });
+    });
+    var ps = $("preset");
+    Object.keys(PRESETS).forEach(function (k) { ps.appendChild(new Option(k, k)); });
+  }
+
+  function readState() {
+    var s = defaults();
+    allFields().forEach(function (f) {
+      var e = $(f.id);
+      s[f.id] = f.type === "check" ? e.checked : e.value;
+    });
+    s.syntax = $("syntax").value;
+    s.shell = $("shell").value;
+    return s;
+  }
+  function setField(id, v) {
+    var e = $(id); if (!e) return;
+    if (e.type === "checkbox") e.checked = !!v; else e.value = v;
+  }
+  function resetAll() {
+    var d = defaults();
+    allFields().forEach(function (f) { setField(f.id, d[f.id]); });
+  }
+
+  var lastText = "", lastGroups = [], lastMerge = true;
+  function update() {
+    var s = readState();
+    allFields().forEach(function (f) { rows[f.id].hidden = !visible(f, s); });
+    sets.forEach(function (x) {
+      x.el.hidden = !x.sec.fields.some(function (f) { return !rows[f.id].hidden; });
+    });
+    var r = build(s);
+    lastGroups = r.groups;
+    lastMerge = s.syntax === "short";
+    lastText = formatCommand(r.groups, s.shell, $("multiline").checked, lastMerge);
+    $("out").textContent = lastText;
+
+    var tbl = $("exp"); tbl.textContent = "";
+    var head = make("tr");
+    var c1 = make("td"); c1.appendChild(make("code", "", APP.cmd));
+    head.appendChild(c1); head.appendChild(make("td", "", APP.run));
+    tbl.appendChild(head);
+    r.groups.forEach(function (g) {
+      var tr = make("tr"), a = make("td"), b = make("td", "", g.d);
+      a.appendChild(make("code", "", tokensText(g, s.shell)));
+      tr.appendChild(a); tr.appendChild(b); tbl.appendChild(tr);
+    });
+
+    var warns = r.warnings.concat(shellWarnings(r.groups, s.shell, s));
+    var w = $("warns"); w.textContent = "";
+    if (warns.length) {
+      w.hidden = false;
+      var ul = make("ul");
+      warns.forEach(function (t) { ul.appendChild(make("li", "", t)); });
+      w.appendChild(ul);
+    } else w.hidden = true;
+  }
+
+  render();
+  resetAll();
+  document.addEventListener("input", update);
+  document.addEventListener("change", update);
+
+  $("preset").addEventListener("change", function () {
+    var p = PRESETS[$("preset").value];
+    if (!p) return;
+    resetAll();
+    Object.keys(p).forEach(function (k) { setField(k, p[k]); });
+    $("preset").value = "";
+    update();
+  });
+  $("reset").addEventListener("click", function () { resetAll(); update(); });
+
+  $("copy").addEventListener("click", function () {
+    var done = function () {
+      var b = $("copy"); b.textContent = "Copied!";
+      setTimeout(function () { b.textContent = "Copy command"; }, 1500);
+    };
+    var fallback = function () {
+      var t = document.createElement("textarea");
+      t.value = lastText; t.style.position = "fixed"; t.style.opacity = "0";
+      document.body.appendChild(t); t.select();
+      try { document.execCommand("copy"); done(); } catch (e) {}
+      document.body.removeChild(t);
+    };
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(lastText).then(done, fallback);
+    else fallback();
+  });
+
+  $("save").addEventListener("click", function () {
+    var shell = $("shell").value;
+    var ext = shell === "posix" ? "sh" : (shell === "ps" ? "ps1" : "bat");
+    var head = shell === "posix" ? "#!/usr/bin/env bash\n" : (shell === "cmd" ? "@echo off\n" : "");
+    var blob = new Blob([head + formatCommand(lastGroups, shell, true, lastMerge) + "\n"], { type: "text/plain" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = APP.file + "." + ext;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  });
+
+  update();
+}
+
+if (typeof module !== "undefined") module.exports = {
+  APP: APP, build: build, formatCommand: formatCommand, defaults: defaults, shellWarnings: shellWarnings,
+  PRESETS: PRESETS, SECTIONS: SECTIONS, quote: quote, allFields: allFields, visible: visible, splitArgs: splitArgs
+};
+
+</script>
+</body>
+</html>
